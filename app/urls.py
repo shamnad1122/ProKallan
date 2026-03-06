@@ -1,13 +1,13 @@
 # urls.py
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 from . import views
-from django.conf.urls import url
 from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('csrf/', views.get_csrf_token, name='get_csrf_token'),
     path('home',views.home),
     path('',views.index),
     path('index', views.index, name='index'),

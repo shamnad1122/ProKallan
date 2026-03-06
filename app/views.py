@@ -71,15 +71,27 @@ def teacher_register(request):
 
 def addlogin(request):
     if request.method == "POST":
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        # Handle both JSON and form data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+            username = data.get('username')
+            password = data.get('password')
+        else:
+            username = request.POST.get('username')
+            password = request.POST.get('password')
 
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
             auth_login(request, user)
+            # Return JSON for API requests
+            if request.content_type == 'application/json':
+                return JsonResponse({'success': True, 'message': 'Login successful'})
             return redirect('index')
         else:
+            # Return JSON error for API requests
+            if request.content_type == 'application/json':
+                return JsonResponse({'success': False, 'error': 'Invalid credentials'}, status=401)
             return render(request, 'login.html', {'error': 'Invalid credentials'})
 
 
@@ -522,3 +534,13 @@ def stop_camera_scripts(request):
 
 
 
+
+
+# CSRF token endpoint for React frontend
+from django.middleware.csrf import get_token
+from django.views.decorators.http import require_http_methods
+
+@require_http_methods(["GET"])
+def get_csrf_token(request):
+    """Return CSRF token for frontend"""
+    return JsonResponse({'csrfToken': get_token(request)})
