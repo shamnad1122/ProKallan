@@ -14,7 +14,6 @@ export function Register() {
     last_name: '',
     phone: '',
   });
-  const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
 
@@ -22,20 +21,11 @@ export function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setProfilePicture(e.target.files[0]);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await register({
-        ...formData,
-        profile_picture: profilePicture || undefined,
-      });
+      await register(formData);
     } catch (error) {
       console.error('Registration failed:', error);
     } finally {
@@ -126,19 +116,9 @@ export function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={6}
               />
-            </div>
-            <div>
-              <label htmlFor="profile_picture" className="block text-sm font-medium mb-2">
-                Profile Picture
-              </label>
-              <Input
-                id="profile_picture"
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                required
-              />
+              <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Registering...' : 'Register'}

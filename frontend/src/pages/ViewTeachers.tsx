@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import type { User } from '@/types';
 
 export function ViewTeachers() {
   const [filters, setFilters] = useState({
@@ -12,27 +10,31 @@ export function ViewTeachers() {
     building: '',
   });
 
-  const { data: teachers = [], isLoading } = useQuery({
+  const { data: teachersData, isLoading } = useQuery({
     queryKey: ['teachers', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
       });
-      const response = await api.get(`/view_teachers/?${params}`);
-      return response.data.teachers || [];
+      const response = await api.get(`/api/teachers/?${params}`);
+      return response.data;
     },
   });
 
-  const { data: metadata } = useQuery({
-    queryKey: ['teachers-metadata'],
+  const teachers = teachersData?.teachers || [];
+
+  const { data: hallsData } = useQuery({
+    queryKey: ['lecture-halls-for-buildings'],
     queryFn: async () => {
-      const response = await api.get('/view_teachers/');
-      return {
-        buildings: response.data.buildings || [],
-      };
+      const response = await api.get('/api/lecture-halls/');
+      return response.data;
     },
   });
+
+  const metadata = {
+    buildings: hallsData?.buildings || [],
+  };
 
   return (
     <div>
@@ -93,20 +95,20 @@ export function ViewTeachers() {
                   {teachers.map((teacher: any) => (
                     <tr key={teacher.id} className="border-b hover:bg-gray-50">
                       <td className="p-3">
-                        {teacher.first_name} {teacher.last_name}
+                        {teacher.full_name}
                       </td>
                       <td className="p-3">{teacher.username}</td>
                       <td className="p-3">{teacher.email}</td>
                       <td className="p-3">
-                        {teacher.lecturehall ? (
-                          <span className="text-sm">{teacher.lecturehall.hall_name}</span>
+                        {teacher.lecture_hall ? (
+                          <span className="text-sm">{teacher.lecture_hall.hall_name}</span>
                         ) : (
                           <span className="text-sm text-gray-500">Not assigned</span>
                         )}
                       </td>
                       <td className="p-3">
-                        {teacher.lecturehall ? (
-                          <span className="text-sm">{teacher.lecturehall.building}</span>
+                        {teacher.lecture_hall ? (
+                          <span className="text-sm">{teacher.lecture_hall.building}</span>
                         ) : (
                           <span className="text-sm text-gray-500">-</span>
                         )}

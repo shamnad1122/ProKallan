@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
-import type { LectureHall, User } from '@/types';
+import type { LectureHall } from '@/types';
 
 export function ManageLectureHalls() {
   const { toast } = useToast();
@@ -22,36 +22,36 @@ export function ManageLectureHalls() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newHall, setNewHall] = useState({ hall_name: '', building: '' });
 
-  const { data: halls = [], isLoading } = useQuery({
+  const { data: hallsData, isLoading } = useQuery({
     queryKey: ['lecture-halls', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
       });
-      const response = await api.get(`/manage-lecture-halls/?${params}`);
-      return response.data.lecture_halls || [];
+      const response = await api.get(`/api/lecture-halls/?${params}`);
+      return response.data;
     },
   });
 
-  const { data: metadata } = useQuery({
-    queryKey: ['lecture-halls-metadata'],
+  const halls = hallsData?.halls || [];
+
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers-for-assignment'],
     queryFn: async () => {
-      const response = await api.get('/manage-lecture-halls/');
-      return {
-        teachers: response.data.teachers || [],
-        buildings: response.data.buildings || [],
-      };
+      const response = await api.get('/api/teachers/');
+      return response.data;
     },
   });
+
+  const metadata = {
+    teachers: teachersData?.teachers || [],
+    buildings: hallsData?.buildings || [],
+  };
 
   const addHallMutation = useMutation({
     mutationFn: async (data: { hall_name: string; building: string }) => {
-      const formData = new FormData();
-      formData.append('add_hall', 'true');
-      formData.append('hall_name', data.hall_name);
-      formData.append('building', data.building);
-      const response = await api.post('/manage-lecture-halls/', formData);
+      const response = await api.post('/api/lecture-halls/add/', data);
       return response.data;
     },
     onSuccess: () => {
@@ -63,7 +63,7 @@ export function ManageLectureHalls() {
     onError: (error: any) => {
       toast({
         title: 'Error',
-        description: error.response?.data?.error_message || 'Failed to add lecture hall',
+        description: error.response?.data?.error || 'Failed to add lecture hall',
         variant: 'destructive',
       });
     },
@@ -71,21 +71,17 @@ export function ManageLectureHalls() {
 
   const mapTeacherMutation = useMutation({
     mutationFn: async ({ hall_id, teacher_id }: { hall_id: number; teacher_id: number }) => {
-      const formData = new FormData();
-      formData.append('map_teacher', 'true');
-      formData.append('hall_id', hall_id.toString());
-      formData.append('teacher_id', teacher_id.toString());
-      const response = await api.post('/manage-lecture-halls/', formData);
+      const response = await api.post('/api/lecture-halls/assign/', { hall_id, teacher_id });
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lecture-halls'] });
-      toast({ title: 'Success', description: 'Teacher mapped successfully' });
+      toast({ title: 'Success', description: 'Teacher assigned successfully' });
     },
     onError: () => {
       toast({
         title: 'Error',
-        description: 'Failed to map teacher',
+        description: 'Failed to assign teacher',
         variant: 'destructive',
       });
     },
@@ -201,7 +197,8 @@ export function ManageLectureHalls() {
                       <td className="p-3">
                         {hall.assigned_teacher ? (
                           <span className="text-sm">
-                            {hall.assigned_teacher.first_name} {hall.assigned_teacher.last_name}
+                            {(hall.assigned_teacher as any).full_name || 
+                             `${hall.assigned_teacher.first_name} ${hall.assigned_teacher.last_name}`}
                           </span>
                         ) : (
                           <span className="text-sm text-gray-500">Not assigned</span>
@@ -214,9 +211,9 @@ export function ManageLectureHalls() {
                           value={hall.assigned_teacher?.id || ''}
                         >
                           <option value="">Select Teacher</option>
-                          {metadata?.teachers.map((teacher: User) => (
+                          {metadata?.teachers.map((teacher: any) => (
                             <option key={teacher.id} value={teacher.id}>
-                              {teacher.first_name} {teacher.last_name}
+                              {teacher.full_name || `${teacher.first_name} ${teacher.last_name}`}
                             </option>
                           ))}
                         </select>

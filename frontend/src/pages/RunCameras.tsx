@@ -13,7 +13,7 @@ export function RunCameras() {
 
   const startMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post('/trigger_camera_scripts/');
+      const response = await api.post('/api/cameras/start/');
       return response.data;
     },
     onSuccess: () => {
@@ -34,7 +34,7 @@ export function RunCameras() {
 
   const stopMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post('/stop_camera_scripts/');
+      const response = await api.post('/api/cameras/stop/');
       return response.data;
     },
     onSuccess: () => {

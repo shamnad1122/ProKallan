@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Check, X, Filter } from 'lucide-react';
+import { Eye, Check, X } from 'lucide-react';
 import type { MalpracticeLog as MalpracticeLogType } from '@/types';
 
 export function MalpracticeLog() {
@@ -28,32 +28,45 @@ export function MalpracticeLog() {
   
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logsData, isLoading } = useQuery({
     queryKey: ['malpractice-logs', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
       });
-      const response = await api.get(`/malpractice_log/?${params}`);
-      return response.data.result || [];
+      const response = await api.get(`/api/malpractice-logs/?${params}`);
+      return response.data;
     },
   });
 
-  const { data: metadata } = useQuery({
-    queryKey: ['malpractice-metadata'],
+  const logs = logsData?.logs || [];
+
+  const { data: hallsData } = useQuery({
+    queryKey: ['lecture-halls-for-filters'],
     queryFn: async () => {
-      const response = await api.get('/malpractice_log/');
-      return {
-        buildings: response.data.buildings || [],
-        faculty_list: response.data.faculty_list || [],
-      };
+      const response = await api.get('/api/lecture-halls/');
+      return response.data;
     },
   });
+
+  const { data: teachersData } = useQuery({
+    queryKey: ['teachers-for-filters'],
+    queryFn: async () => {
+      const response = await api.get('/api/teachers/');
+      return response.data;
+    },
+    enabled: isAdmin,
+  });
+
+  const metadata = {
+    buildings: hallsData?.buildings || [],
+    faculty_list: teachersData?.teachers || [],
+  };
 
   const reviewMutation = useMutation({
-    mutationFn: async ({ proof, decision }: { proof: string; decision: 'yes' | 'no' }) => {
-      const response = await api.post('/review_malpractice/', { proof, decision });
+    mutationFn: async ({ id, decision }: { id: number; decision: 'yes' | 'no' }) => {
+      const response = await api.post('/api/malpractice-logs/review/', { id, decision });
       return response.data;
     },
     onSuccess: () => {
@@ -72,8 +85,8 @@ export function MalpracticeLog() {
     },
   });
 
-  const handleReview = (proof: string, decision: 'yes' | 'no') => {
-    reviewMutation.mutate({ proof, decision });
+  const handleReview = (id: number, decision: 'yes' | 'no') => {
+    reviewMutation.mutate({ id, decision });
   };
 
   const handleFilterChange = (key: string, value: string) => {
@@ -167,8 +180,8 @@ export function MalpracticeLog() {
                           {log.malpractice}
                         </span>
                       </td>
-                      <td className="p-3">{log.lecture_hall.hall_name}</td>
-                      <td className="p-3">{log.lecture_hall.building}</td>
+                      <td className="p-3">{log.lecture_hall?.hall_name || 'N/A'}</td>
+                      <td className="p-3">{log.lecture_hall?.building || 'N/A'}</td>
                       <td className="p-3">
                         {log.verified ? (
                           <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
@@ -194,14 +207,14 @@ export function MalpracticeLog() {
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={() => handleReview(log.proof, 'yes')}
+                                onClick={() => handleReview(log.id, 'yes')}
                               >
                                 <Check className="w-4 h-4" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleReview(log.proof, 'no')}
+                                onClick={() => handleReview(log.id, 'no')}
                               >
                                 <X className="w-4 h-4" />
                               </Button>
